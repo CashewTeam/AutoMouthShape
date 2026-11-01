@@ -110,6 +110,12 @@ macOS App 包含完整模型与 macOS 运行库，可单独移到其他位置离
 
 macOS 包使用本地 ad-hoc 签名，未做 Apple 公证。Windows 提供完整便携包。运行测试请参见 [VALIDATION.md](VALIDATION.md)。运行资源的来源、版本和 SHA-256 记录在 `third_party/runtime-manifest.json`。
 
+## GitHub Actions 发布
+
+手动构建和发布：打开 GitHub 仓库的 **Actions → Build and publish release → Run workflow**。工作流会运行完整验证、构建 macOS Universal 与 Windows x64、生成合并 ZIP，并创建 `v<mygo.json 版本号>` Release。相同版本再次运行时会更新已有 Release 中的 ZIP。
+
+模型不在 Git 仓库内。手动运行工作流时，它会从 [Hugging Face 模型仓库](https://huggingface.co/csukuangfj/sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12) 自动下载 `model.int8.onnx` 和 `tokens.txt`，并按项目记录的 SHA-256 校验。校验不通过时工作流会停止，不会发布。macOS 与 Windows 对齐器由 `scripts/prepare-runtime.sh` 从固定版本发布页下载并校验。
+
 ## 源码结构
 
 - `internal/core`：音频解码、SRT、时间轴编辑、工程与导出。

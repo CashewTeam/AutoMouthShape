@@ -1,0 +1,73 @@
+name: Build and publish release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download offline model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/automouthshape-model"
+          model_url="https://huggingface.co/csukuangfj/sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12/resolve/main"
+          curl --fail --location --retry 3 --connect-timeout 30 \
+            "$model_url/model.int8.onnx" \
+            -o "$RUNNER_TEMP/automouthshape-model/model.int8.onnx"
+          curl --fail --location --retry 3 --connect-timeout 30 \
+            "$model_url/tokens.txt" \
+            -o "$RUNNER_TEMP/automouthshape-model/tokens.txt"
+          cd "$RUNNER_TEMP/automouthshape-model"
+          printf '%s  %s\n' \
+            e7c4e54ee4c4c47829cc6667d5d00ed8ea7bef1dcfeef0fce766f77752a2726c \
+            model.int8.onnx | shasum -a 256 --check
+          printf '%s  %s\n' \
+            a7a044c52cb29cbe8b0dc1953e92cefd4ca16b0ed968177b6beab21f9a7d0b31 \
+            tokens.txt | shasum -a 256 --check
+          cd "$GITHUB_WORKSPACE"
+          ./scripts/prepare-runtime.sh "$RUNNER_TEMP/automouthshape-model"
+
+      - name: Build and validate both platforms
+        run: ./scripts/build.sh
+
+      - name: Create combined offline ZIP
+        run: python3 scripts/package.py
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import json; print(json.load(open("mygo.json"))["version"])')"
+          tag="v${version}"
+          archive="build/AutoMouthShape-${version}-macOS-Windows.zip"
+          test -f "$archive"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" --clobber
+          else
+            gh release create "$tag" "$archive" \
+              --target "$GITHUB_SHA" \
+              --title "AutoMouthShape ${tag}" \
+              --generate-notes
+          fi
