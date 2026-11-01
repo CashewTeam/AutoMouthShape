@@ -47,53 +47,7 @@ func (a *App) View(c *ui.Context) {
 	}
 	t := c.Theme()
 	ui.Column(c).Fill().Gap(0).Children(func() {
-		ui.Row(c).FillWidth().Height(64).Padding(16, 22).Gap(14).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(30, 30).Radius(10).Background(t.Accent).Draw(func(p *ui.Painter, r ui.Rect) {
-				p.Line(r.X+7, r.Y+15, r.X+12, r.Y+15, 3, t.AccentText)
-				p.Line(r.X+12, r.Y+15, r.X+16, r.Y+22, 3, t.AccentText)
-				p.Line(r.X+16, r.Y+22, r.X+23, r.Y+9, 3, t.AccentText)
-			})
-			ui.Column(c).Gap(1).Children(func() {
-				ui.Text(c, "AutoMouthShape").FontSize(19).Bold()
-				ui.Text(c, "中文口型工作台").FontSize(11).TextColor(t.TextMuted)
-			})
-			ui.Box(c).Grow(1)
-			label := a.Doc.Name
-			if a.Dirty {
-				label += " · 未保存"
-			}
-			ui.Text(c, label).FontSize(12).TextColor(t.TextMuted)
-			if ui.Button(c.Key("open"), "打开工程").Disabled(a.Busy).Clicked() {
-				a.open()
-			}
-			if ui.Button(c.Key("save"), "保存工程").Disabled(a.Busy).Clicked() {
-				a.saveTo(a.ProjectPath, nil)
-			}
-			if ui.PrimaryButton(c.Key("export"), "导出 PNG 序列").Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
-				a.export()
-			}
-		})
-		ui.Box(c).FillWidth().Height(1).Background(t.Border)
-		ui.Row(c).FillWidth().Height(50).PaddingX(20).Gap(8).AlignItems(ui.Center).Children(func() {
-			if ui.Button(c.Key("mouthfolder"), "口型文件夹").Disabled(a.Busy).Clicked() {
-				a.importMouths()
-			}
-			if ui.Button(c.Key("audio"), "导入音频").Disabled(a.Busy).Clicked() {
-				a.importAudio()
-			}
-			if ui.Button(c.Key("srt"), "导入字幕").Disabled(a.Busy).Clicked() {
-				a.importSRT()
-			}
-			ui.Box(c).Width(10)
-			if ui.Button(c.Key("analyze"), "重新分析").Disabled(a.Busy || a.Engine == nil).Clicked() {
-				a.reanalyze()
-			}
-			if ui.Button(c.Key("restore"), "恢复示例").Disabled(a.Busy).Clicked() {
-				a.restore()
-			}
-			ui.Box(c).Grow(1)
-			ui.Text(c, "离线分析 · Omnilingual CTC").FontSize(11).TextColor(t.TextMuted)
-		})
+		a.header(c)
 		ui.Box(c).FillWidth().Height(1).Background(t.Border)
 		ui.Row(c).FillWidth().Grow(1).MinHeight(240).Children(func() {
 			a.sidebar(c)
@@ -131,23 +85,23 @@ func (a *App) View(c *ui.Context) {
 					current = "—"
 				}
 				ui.Text(c, current).FontSize(18).TextAlign(ui.Center).FillWidth().Height(26)
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Justify(ui.Center).FillWidth().Children(func() {
-					if ui.Button(c.Key("previous"), "前一帧").Disabled(a.Busy).Clicked() {
-						a.Player.Pause()
-						a.seek(core.Snap(a.Position, a.Doc.FPS) - 1/float64(a.Doc.FPS))
+				ui.Row(c).Gap(8).Height(36).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).FillWidth().Children(func() {
+					_, hasPrevious := a.soundTarget(false)
+					_, hasNext := a.soundTarget(true)
+					if ui.Button(c.Key("previous"), "前一音").Width(76).Shrink(0).Disabled(a.Busy || !hasPrevious).Clicked() {
+						a.stepSound(false)
 					}
 					play := "播放"
 					if a.Player.Playing() {
 						play = "暂停"
 					}
-					if ui.PrimaryButton(c.Key("play"), play).Width(88).Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
+					if ui.PrimaryButton(c.Key("play"), play).Width(88).Shrink(0).Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
 						a.toggle()
 					}
-					if ui.Button(c.Key("next"), "后一帧").Disabled(a.Busy).Clicked() {
-						a.Player.Pause()
-						a.seek(core.Snap(a.Position, a.Doc.FPS) + 1/float64(a.Doc.FPS))
+					if ui.Button(c.Key("next"), "后一音").Width(76).Shrink(0).Disabled(a.Busy || !hasNext).Clicked() {
+						a.stepSound(true)
 					}
-					ui.Text(c, clock(a.Position)+" / "+clock(a.Doc.Duration)).FontSize(12).TextColor(t.TextMuted)
+					ui.Text(c.Key("timecode"), clock(a.Position)+" / "+clock(a.Doc.Duration)).Label("播放时间码").Width(196).Shrink(0).SingleLine().Font("monospace").FontFeatures("tnum").FontSize(12).TextColor(t.TextMuted)
 				})
 			})
 			ui.Box(c).FillHeight().Width(1).Background(t.Border)
@@ -172,7 +126,56 @@ func (a *App) View(c *ui.Context) {
 					a.log()
 				}
 			}
+			ui.Text(c, "离线分析 · Omnilingual CTC").FontSize(10).TextColor(t.TextMuted)
 			ui.Text(c, "v"+core.Version).FontSize(10).TextColor(t.TextMuted)
+		})
+	})
+}
+func (a *App) header(c *ui.Context) {
+	t := c.Theme()
+	ui.Row(c).FillWidth().Height(64).PaddingX(18).Gap(12).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Shrink(0).Children(func() {
+			ui.Image(c, a.Icon).Label("AutoMouthShape 图标").Size(30, 30).Shrink(0).Fit(ui.Contain)
+			ui.Column(c).Gap(1).Children(func() {
+				ui.Text(c, "AutoMouthShape").FontSize(17).Bold()
+				ui.Text(c, "中文口型工作台").FontSize(10).TextColor(t.TextMuted)
+			})
+		})
+		ui.Box(c).Width(1).Height(26).Background(t.Border).Shrink(0)
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
+			if ui.Button(c.Key("mouthfolder"), "口型文件夹").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.importMouths()
+			}
+			if ui.Button(c.Key("audio"), "导入音频").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.importAudio()
+			}
+			if ui.Button(c.Key("srt"), "导入字幕").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.importSRT()
+			}
+		})
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
+			if ui.Button(c.Key("analyze"), "重新分析").FontSize(12).Padding(8, 10).Disabled(a.Busy || a.Engine == nil).Clicked() {
+				a.reanalyze()
+			}
+			if ui.Button(c.Key("restore"), "恢复示例").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.restore()
+			}
+		})
+		label := a.Doc.Name
+		if a.Dirty {
+			label += " · 未保存"
+		}
+		ui.Text(c, label).FontSize(11).TextColor(t.TextMuted).Grow(1).MinWidth(0).SingleLine().Ellipsis("…").Tooltip(label)
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
+			if ui.Button(c.Key("open"), "打开工程").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.open()
+			}
+			if ui.Button(c.Key("save"), "保存工程").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.saveTo(a.ProjectPath, nil)
+			}
+			if ui.PrimaryButton(c.Key("export"), "导出 PNG 序列").FontSize(12).Padding(8, 12).Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
+				a.export()
+			}
 		})
 	})
 }
@@ -280,17 +283,29 @@ func (a *App) inspector(c *ui.Context) {
 			ui.Text(c, fmt.Sprintf("静音阈值 %.0f dBFS · 重新分析后应用", a.Doc.SilenceDB)).FontSize(10).TextColor(t.TextMuted).Wrap()
 			ui.Box(c).FillWidth().Height(1).Background(t.Border)
 			ui.Text(c, "快捷键").FontSize(12).Bold()
-			ui.Text(c, "空格   播放 / 暂停\n← →   逐帧定位\n⌘ / Ctrl + Z   撤销\n⌘ / Ctrl + S   保存工程").FontSize(11).TextColor(t.TextMuted)
+			ui.Text(c, "空格   播放 / 暂停\n← →   逐帧定位\n滚轮   时间轴平移\nCtrl / ⌘ + 滚轮   缩放\n+ / −   时间轴缩放\nShift + ← / →   平移\n⌘ / Ctrl + Z   撤销\n⌘ / Ctrl + S   保存工程").FontSize(11).TextColor(t.TextMuted)
 		})
 	})
 }
-func (a *App) span() float64 { return max(.1, a.Doc.Duration/a.Zoom) }
+func (a *App) span() float64 { return a.Doc.Duration / a.Zoom }
+
+func (a *App) panTimeline(delta float64) {
+	a.Pan = max(0, min(a.Doc.Duration-a.span(), a.Pan+delta))
+}
+
+// Keep the time under anchor (a fraction of the viewport) at the same pixel.
+func (a *App) zoomTimeline(factor, anchor float64) {
+	anchor = max(0, min(1, anchor))
+	time := a.Pan + anchor*a.span()
+	a.Zoom = max(1, min(64, a.Zoom*factor))
+	a.Pan = max(0, min(a.Doc.Duration-a.span(), time-anchor*a.span()))
+}
 func (a *App) timeline(c *ui.Context) {
 	t := c.Theme()
 	ui.Column(c).FillWidth().Height(258).Gap(0).Children(func() {
 		ui.Row(c).FillWidth().Height(40).PaddingX(18).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "口型时间轴").FontSize(12).Bold()
-			ui.Text(c, "拖动区间边界调整 · 点击波形定位").FontSize(10).TextColor(t.TextMuted).Grow(1)
+			ui.Text(c, "滚轮平移 · Ctrl/⌘＋滚轮缩放 · +/− 缩放 · Shift＋←/→ 平移").FontSize(10).TextColor(t.TextMuted).Grow(1).SingleLine().Ellipsis("…")
 			if ui.Button(c.Key("undo"), "撤销").Disabled(a.Busy).Clicked() {
 				a.undo()
 			}
@@ -298,13 +313,11 @@ func (a *App) timeline(c *ui.Context) {
 				a.redo()
 			}
 			if ui.Button(c.Key("zoomout"), "−").Disabled(a.Zoom <= 1).Clicked() {
-				a.Zoom = max(1, a.Zoom/1.5)
-				a.Pan = min(a.Pan, max(0, a.Doc.Duration-a.span()))
+				a.zoomTimeline(1/1.5, a.timelineAnchor)
 			}
-			ui.Text(c, fmt.Sprintf("%.0f%%", a.Zoom*100)).FontSize(10)
+			ui.Text(c, fmt.Sprintf("%.0f%%", a.Zoom*100)).Width(52).Shrink(0).TextAlign(ui.Center).Font("monospace").FontSize(10)
 			if ui.Button(c.Key("zoomin"), "+").Disabled(a.Zoom >= 64).Clicked() {
-				a.Zoom = min(64, a.Zoom*1.5)
-				a.Pan = max(0, min(a.Position-a.span()/2, a.Doc.Duration-a.span()))
+				a.zoomTimeline(1.5, a.timelineAnchor)
 			}
 		})
 		ui.Row(c).FillWidth().Height(190).Children(func() {
@@ -314,7 +327,24 @@ func (a *App) timeline(c *ui.Context) {
 				ui.Text(c, "字幕").FontSize(10).Height(44).TextColor(t.TextMuted)
 				ui.Text(c, "口型").FontSize(10).TextColor(t.TextMuted)
 			})
-			ui.Box(c.Key("timeline")).Label("口型编辑时间轴").Bind(&a.timelineHandle).Grow(1).FillHeight().Clip().Focusable().HandleInput(func(ev ui.InputEvent) bool { return a.timelineInput(c, ev) }).Draw(func(p *ui.Painter, r ui.Rect) { a.drawTimeline(p, r, t) })
+			canvas := ui.Box(c.Key("timeline")).Label("口型编辑时间轴").Bind(&a.timelineHandle).Grow(1).FillHeight().Clip().Focusable().HandleInput(func(ev ui.InputEvent) bool { return a.timelineInput(c, ev) }).Draw(func(p *ui.Painter, r ui.Rect) { a.drawTimeline(p, r, t) })
+			if x, _, over := canvas.PointerPosition(); over && canvas.Bounds().W > 0 {
+				a.timelineAnchor = max(0, min(1, float64(x/canvas.Bounds().W)))
+			}
+			if !a.Busy && (canvas.Hovered() || canvas.Focused()) {
+				if c.Shortcut(0, ui.KeyEqual) || c.Shortcut(ui.Shift, ui.KeyEqual) {
+					a.zoomTimeline(1.5, a.timelineAnchor)
+				}
+				if c.Shortcut(0, ui.KeyMinus) {
+					a.zoomTimeline(1/1.5, a.timelineAnchor)
+				}
+				if c.Shortcut(ui.Shift, ui.KeyLeft) {
+					a.panTimeline(-a.span() * .2)
+				}
+				if c.Shortcut(ui.Shift, ui.KeyRight) {
+					a.panTimeline(a.span() * .2)
+				}
+			}
 		})
 		pan := a.Pan
 		if ui.Slider(c.Key("pan"), &pan, 0, max(.0001, a.Doc.Duration-a.span())).FillWidth().Height(24).Disabled(a.Zoom <= 1).Changed() {
@@ -383,11 +413,24 @@ func (a *App) timelineInput(c *ui.Context, e ui.InputEvent) bool {
 		}
 		return true
 	case ui.InputScroll:
-		a.Pan = max(0, min(a.Doc.Duration-a.span(), a.Pan+float64(e.DX+e.DY)*a.span()/float64(w)))
+		delta := e.DX
+		if delta == 0 {
+			delta = e.DY
+		}
+		if e.Mods&(ui.Ctrl|ui.Cmd) != 0 {
+			// DY is in DIPs for both a wheel and a precise touchpad.
+			if e.DY != 0 {
+				delta = e.DY
+			}
+			a.timelineAnchor = max(0, min(1, float64(e.X/w)))
+			a.zoomTimeline(math.Exp(-float64(delta)*.005), a.timelineAnchor)
+		} else {
+			a.panTimeline(float64(delta) * a.span() / float64(w))
+		}
 		return true
 	case ui.InputZoom:
-		a.Zoom = max(1, min(64, a.Zoom*float64(e.Scale)))
-		a.Pan = max(0, min(a.Pan, a.Doc.Duration-a.span()))
+		a.timelineAnchor = max(0, min(1, float64(e.X/w)))
+		a.zoomTimeline(float64(e.Scale), a.timelineAnchor)
 		return true
 	}
 	return false

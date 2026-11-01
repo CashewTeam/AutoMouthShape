@@ -14,7 +14,7 @@ for path in sorted(runtime.rglob('*')):
                 h.update(block)
         files[path.relative_to(runtime).as_posix()] = {'size': path.stat().st_size, 'sha256': h.hexdigest()}
 manifest = {
-    'app_version': '0.0.1',
+    'app_version': json.loads((root / 'mygo.json').read_text())['version'],
     'mygo': 'github.com/egoist/mygo v0.7.3',
     'aligner': {'version': 'v0.2.2', 'source': 'https://github.com/corvo007/cpp-ctc-aligner/releases/tag/v0.2.2'},
     'onnxruntime': '1.23.2',

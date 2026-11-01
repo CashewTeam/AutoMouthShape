@@ -1,4 +1,4 @@
-# AutoMouthShape 0.0.1
+# AutoMouthShape 0.0.5
 
 使用 MyGo native UI 的中文口型工作台。纯 Go 界面，不使用 HTML、JavaScript 或 WebView。音频、字幕、口型分析和工程内容均在本地处理，运行时不联网。
 
@@ -24,7 +24,14 @@
 
 七张 PNG 须有相同画布尺寸与口型位置。导出保留原始尺寸和透明度，默认 30 fps，可选 24/25/60 fps，从音频起点开始，文件为 `frame_000001.png` 等。每次创建新的输出子目录，取消或失败时保留 `INCOMPLETE.txt`。
 
-空格播放或暂停，左右方向键逐帧定位；Cmd/Ctrl+S 保存，Cmd/Ctrl+O 打开，Cmd/Ctrl+Z 撤销，Cmd/Ctrl+Shift+Z 重做。勾选「循环选中区间」后点击播放即可循环。
+「前一音 / 后一音」跳到播放头前后最近的已对齐汉字发音起点，跳转后暂停；句间停顿会被跳过。音频边界或没有对齐结果时，对应按钮禁用。空格播放或暂停，左右方向键逐帧定位；Cmd/Ctrl+S 保存，Cmd/Ctrl+O 打开，Cmd/Ctrl+Z 撤销，Cmd/Ctrl+Shift+Z 重做。勾选「循环选中区间」后点击播放即可循环。
+
+时间轴交互：
+
+- 普通滚轮或触控板双指：左右平移时间轴。
+- Ctrl/Cmd＋滚轮、触控板捏合：以鼠标位置为锚点缩放。
+- 鼠标位于时间轴上，或时间轴获得焦点时，`+` / `-` 缩放，`Shift＋←/→` 左右平移当前可见范围的 20%。
+- 缩放按钮与键盘缩放使用鼠标最后停留的时间轴位置，尚未移入时间轴时使用视图中心；缩放到音频边界时限制在有效范围内。
 
 ## 对齐方式与边界
 
@@ -78,8 +85,14 @@ go vet ./...
 
 - `build/darwin-universal/AutoMouthShape.app`
 - `build/windows-amd64/AutoMouthShape.exe`（保留同目录所有资源）
-- `build/AutoMouthShape-0.0.1-macOS-Universal.zip`
-- `build/AutoMouthShape-0.0.1-Windows-x64.zip`
+
+日常构建不生成 ZIP。需要发布离线包时，再单独执行：
+
+```sh
+python3 scripts/package.py
+```
+
+这会生成当前版本的 macOS 和 Windows 离线 ZIP。
 
 macOS 包使用本地 ad-hoc 签名，未做 Apple 公证。Windows 提供完整便携包。运行测试请参见 [VALIDATION.md](VALIDATION.md)。运行资源的来源、版本和 SHA-256 记录在 `third_party/runtime-manifest.json`。
 
@@ -90,4 +103,4 @@ macOS 包使用本地 ad-hoc 签名，未做 Apple 公证。Windows 提供完整
 - `internal/desktop`：MyGo 原生界面、播放和后台任务。
 - `internal/demo`：内嵌示例及真实模型预分析结果。
 
-内置口型为程序绘制的原创几何示例，音频由本机中文系统语音合成。`go run ./cmd/prepare-demo` 可以重新生成几何素材和预分析结果。应用版本始终以 `0.0.1` 作为本轮首版，后续按补丁版本递增。
+内置口型为程序绘制的原创几何示例，音频由本机中文系统语音合成。`go run ./cmd/prepare-demo` 可以重新生成几何素材和预分析结果。应用从 `0.0.1` 起步，后续按补丁版本递增。

@@ -21,14 +21,47 @@ func TestTimelineEditingUI(t *testing.T) {
 	if !tt.HasText("口型时间轴") {
 		t.Fatal("timeline missing")
 	}
-	if e = tt.Click("后一帧"); e != nil {
-		t.Fatal(e)
+	chars := a.Doc.Characters
+	for _, tc := range []struct {
+		button     string
+		from, want float64
+	}{
+		{"后一音", 0, chars[0].Start},
+		{"后一音", chars[0].Start, chars[1].Start},
+		{"前一音", chars[1].Start, chars[0].Start},
+		{"前一音", (chars[0].Start + chars[1].Start) / 2, chars[0].Start},
+		{"后一音", (chars[0].Start + chars[1].Start) / 2, chars[1].Start},
+		{"前一音", 0, 0},
+		{"后一音", chars[len(chars)-1].Start, chars[len(chars)-1].Start},
+		{"前一音", a.Doc.Duration, chars[len(chars)-1].Start},
+	} {
+		a.seek(tc.from)
+		tt.Frame()
+		if e = tt.Click(tc.button); e != nil {
+			t.Fatal(e)
+		}
+		if a.Position != tc.want {
+			t.Fatalf("%s from %v: got %v, want %v", tc.button, tc.from, a.Position, tc.want)
+		}
 	}
-	if a.Position != 1.0/30 {
-		t.Fatal("frame step", a.Position)
+	a.Doc.Characters = nil
+	a.seek(0)
+	tt.Frame()
+	for _, button := range []string{"前一音", "后一音"} {
+		if e = tt.Click(button); e != nil {
+			t.Fatal(e)
+		}
+		if a.Position != 0 {
+			t.Fatal("navigation without alignment changed position")
+		}
 	}
+	a.Doc.Characters = chars
+	a.seek(0)
 	a.Selected = 1
 	tt.Key(0, ui.KeyRight)
+	if a.Position != 1.0/30 {
+		t.Fatal("keyboard frame step", a.Position)
+	}
 	if e = tt.Click("替换为 A"); e != nil {
 		t.Fatal(e)
 	}

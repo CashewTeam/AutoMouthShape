@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-const Version = "0.0.1"
+const Version = "0.0.5"
 
 type Mouth string
 

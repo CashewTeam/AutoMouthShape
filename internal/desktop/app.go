@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -23,6 +24,7 @@ type App struct {
 	Engine         *aligner.Engine
 	Window         *mygo.Window
 	Images         map[core.Mouth]*ui.Bitmap
+	Icon           *ui.Bitmap
 	Player         *audio.Player
 	History        core.History
 	Selected       int
@@ -44,15 +46,24 @@ type App struct {
 	dragIndex      int
 	dragBefore     []core.Segment
 	timelineHandle ui.Handle
+	timelineAnchor float64
 	closing        bool
 }
 
 func New(root string) (*App, error) {
+	iconData, e := os.ReadFile(filepath.Join(filepath.Dir(root), "icon.png"))
+	if e != nil {
+		return nil, fmt.Errorf("加载应用图标: %w", e)
+	}
+	icon, e := ui.DecodeBitmap(iconData)
+	if e != nil {
+		return nil, fmt.Errorf("加载应用图标: %w", e)
+	}
 	d, p, e := demo.LoadDemo()
 	if e != nil {
 		return nil, e
 	}
-	a := &App{Doc: d, PCM: p, Selected: -1, Zoom: 1, Status: "示例已就绪 · 点击播放，或导入自己的素材", dragIndex: -1}
+	a := &App{Doc: d, PCM: p, Icon: icon, Selected: -1, Zoom: 1, Status: "示例已就绪 · 点击播放，或导入自己的素材", dragIndex: -1}
 	a.install(d, p)
 	a.Engine, e = aligner.New(root)
 	if e != nil {
@@ -79,6 +90,8 @@ func (a *App) install(d *core.Document, p *core.PCM) {
 	a.Selected = -1
 	a.Position = 0
 	a.Pan = 0
+	a.Zoom = 1
+	a.timelineAnchor = .5
 	a.Dirty = false
 	a.Edited = false
 	a.audioImported = false
@@ -87,7 +100,7 @@ func (a *App) install(d *core.Document, p *core.PCM) {
 }
 func (a *App) Run() error {
 	mygo.App.WhenReady(func() {
-		a.Window = mygo.NewWindow(mygo.WindowOptions{Title: "AutoMouthShape · 0.0.1", Width: 1440, Height: 940, MinWidth: 1180, MinHeight: 760, Content: ui.View(a.View)})
+		a.Window = mygo.NewWindow(mygo.WindowOptions{Title: "AutoMouthShape · " + core.Version, Width: 1440, Height: 940, MinWidth: 1180, MinHeight: 760, Content: ui.View(a.View)})
 		a.Window.OnClose(func(e *mygo.CloseEvent) {
 			if a.closing {
 				return
@@ -116,6 +129,32 @@ func (a *App) fail(e error)     { a.LastError = e.Error(); a.Status = "操作失
 func (a *App) seek(t float64) {
 	a.Position = max(0, min(a.Doc.Duration, t))
 	a.Player.Seek(time.Duration(a.Position * float64(time.Second)))
+}
+
+// Sound navigation uses character onsets rather than the merged mouth intervals.
+func (a *App) soundTarget(next bool) (float64, bool) {
+	chars := a.Doc.Characters
+	const epsilon = 1e-6 // Player positions are rounded to nanoseconds.
+	var index int
+	if next {
+		index = sort.Search(len(chars), func(i int) bool { return chars[i].Start > a.Position+epsilon })
+	} else {
+		index = sort.Search(len(chars), func(i int) bool { return chars[i].Start >= a.Position-epsilon }) - 1
+	}
+	if index < 0 || index >= len(chars) {
+		return 0, false
+	}
+	return chars[index].Start, true
+}
+
+func (a *App) stepSound(next bool) {
+	if a.Player.Playing() {
+		a.Position = a.Player.Position().Seconds()
+	}
+	if target, ok := a.soundTarget(next); ok {
+		a.Player.Pause()
+		a.seek(target)
+	}
 }
 func (a *App) toggle() {
 	if a.Player.Playing() {
