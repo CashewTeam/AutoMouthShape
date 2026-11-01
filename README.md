@@ -1,4 +1,4 @@
-# AutoMouthShape 0.0.5
+# AutoMouthShape 0.0.6
 
 使用 MyGo native UI 的中文口型工作台。纯 Go 界面，不使用 HTML、JavaScript 或 WebView。音频、字幕、口型分析和工程内容均在本地处理，运行时不联网。
 
@@ -86,13 +86,27 @@ go vet ./...
 - `build/darwin-universal/AutoMouthShape.app`
 - `build/windows-amd64/AutoMouthShape.exe`（保留同目录所有资源）
 
-日常构建不生成 ZIP。需要发布离线包时，再单独执行：
+日常构建不生成压缩包。需要发布离线包时，再单独执行：
 
 ```sh
 python3 scripts/package.py
 ```
 
-这会生成当前版本的 macOS 和 Windows 离线 ZIP。
+这会生成 `build/AutoMouthShape-0.0.6-macOS-Windows.zip`，使用 ZIP 级别 9 压缩：
+
+```text
+AutoMouthShape-0.0.6/
+  AutoMouthShape.exe
+  AutoMouthShape.app/
+    Contents/Resources/runtime/model/
+    Contents/Resources/runtime/darwin/
+  runtime/windows/
+  runtime/model-location.json
+  icon.png
+  third_party/
+```
+
+macOS App 包含完整模型与 macOS 运行库，可单独移到其他位置离线运行。Windows 运行根目录的 `.exe`，使用外层 Windows 运行库，并从同目录的 `.app` 包内读取模型；使用 Windows 时请保留整个解压目录。模型只存一份，运行时不下载资源。打包需要 macOS 的 `ditto` 和 `codesign`，无需 7-Zip。
 
 macOS 包使用本地 ad-hoc 签名，未做 Apple 公证。Windows 提供完整便携包。运行测试请参见 [VALIDATION.md](VALIDATION.md)。运行资源的来源、版本和 SHA-256 记录在 `third_party/runtime-manifest.json`。
 

@@ -20,6 +20,10 @@ func main() {
 		if e != nil {
 			log.Fatal(e)
 		}
+		base, e = resourceDirectory(base)
+		if e != nil {
+			log.Fatal(e)
+		}
 		*root = filepath.Join(base, "runtime")
 	}
 	abs, e := filepath.Abs(*root)

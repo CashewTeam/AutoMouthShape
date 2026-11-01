@@ -1,5 +1,28 @@
 # 验证记录
 
+## 0.0.6：Windows 目录内包含独立 macOS App（2026-11-01）
+
+- ZIP 根目录放 Windows 程序、Windows 运行库及完整 `AutoMouthShape.app`；模型仅存于 App 内，Windows 通过相对路径读取。
+- App 内不含 Windows 运行库，亦不配置外部模型路径；独立移到中文、含空格目录后，签名检查、界面渲染及真实中文逐字对齐集成测试通过。
+- `go test ./...`、`go vet ./...`、macOS Universal 与 Windows x64 构建通过。
+- ZIP 为 310.2 MiB，CRC、资源 SHA-256 及 Windows 模型路径检查通过；Windows 未进行实机运行验收。
+
+## 7z 快速压缩参数（2026-11-01）
+
+- 使用 LZMA2 级别 1、HC4 匹配器、32 个 fast bytes、线程数按 `os.cpu_count()` 检测本机逻辑处理器数量；保留固实压缩及 512 MiB 字典以利用重复模型。
+- 小样本压缩及解压字节一致性检查通过；随后本机以 8 线程参数完成一次完整打包，7z 为 602.4 MiB，仍耗时数分钟且仅比 ZIP 小幅缩小。
+- 7z 完整性、解压后逐文件 SHA-256、macOS 执行权限及签名检查通过。仅调整打包流程，版本保持 `0.0.5`。
+
+## 合并离线打包（2026-11-01）
+
+- 恢复各平台完整独立资源的布局，仅将 ZIP 压缩级别设为 9；撤销共享模型支持，应用保持 `0.0.5`。
+- 最高压缩级别的合并包为 607.0 MiB（原 607.3 MiB）；ZIP CRC、逐文件 SHA-256 及解压后的 macOS 签名检查通过。
+
+- 仅调整打包流程，应用版本保持 `0.0.5`；日常构建仍不自动生成 ZIP。
+- `python3 scripts/package.py` 生成一个 ZIP，包含 `macOS/AutoMouthShape.app` 与完整 `Windows/` 便携目录。
+- ZIP CRC 检查通过；macOS 21 个文件、Windows 17 个文件均与构建目录的 SHA-256 一致。
+- 解压后 macOS 应用的执行权限与 `codesign --verify --deep --strict` 验证通过。
+
 ## 0.0.5（2026-11-01）
 
 - 顶栏直接显示打包应用使用的 `resources/icon.png`，替换原手绘标记。

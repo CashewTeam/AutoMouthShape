@@ -7,6 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"golang.org/x/text/unicode/norm"
 	"os"
@@ -37,7 +38,11 @@ func New(root string) (*Engine, error) {
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
-	e := &Engine{Binary: filepath.Join(root, runtime.GOOS, bin), Model: filepath.Join(root, "model"), Table: filepath.Join(root, runtime.GOOS, "Chinese_to_Pinyin.txt"), pinyin: map[string]string{}, vocab: map[string]bool{}}
+	model, err := modelDirectory(root)
+	if err != nil {
+		return nil, err
+	}
+	e := &Engine{Binary: filepath.Join(root, runtime.GOOS, bin), Model: model, Table: filepath.Join(root, runtime.GOOS, "Chinese_to_Pinyin.txt"), pinyin: map[string]string{}, vocab: map[string]bool{}}
 	e.simplified = map[string]string{}
 	for _, line := range strings.Split(traditional, "\n") {
 		parts := strings.SplitN(line, "\t", 2)
@@ -296,4 +301,27 @@ func (e *Engine) Analyze(ctx context.Context, d *core.Document, pcm *core.PCM, p
 		return nil, nil, err
 	}
 	return all, timeline, nil
+}
+
+// Combined Windows packages explicitly locate their model inside the macOS app.
+// Standalone builds keep the model in runtime/model.
+func modelDirectory(root string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(root, "model-location.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return filepath.Join(root, "model"), nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("读取模型路径配置: %w", err)
+	}
+	var location struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(data, &location); err != nil {
+		return "", fmt.Errorf("模型路径配置无效: %w", err)
+	}
+	path := filepath.FromSlash(location.Path)
+	if strings.TrimSpace(path) == "" || filepath.IsAbs(path) || filepath.VolumeName(path) != "" {
+		return "", fmt.Errorf("模型路径须为非空相对路径")
+	}
+	return filepath.Join(root, path), nil
 }

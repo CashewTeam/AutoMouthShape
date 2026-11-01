@@ -25,7 +25,11 @@ func TestChineseIntegration(t *testing.T) {
 	if os.Getenv("AMS_INTEGRATION") == "" {
 		t.Skip("set AMS_INTEGRATION=1 to run the bundled binary and model")
 	}
-	root, e := filepath.Abs("../../resources/runtime")
+	resourceRoot := os.Getenv("AMS_RUNTIME")
+	if resourceRoot == "" {
+		resourceRoot = "../../resources/runtime"
+	}
+	root, e := filepath.Abs(resourceRoot)
 	if e != nil {
 		t.Fatal(e)
 	}
