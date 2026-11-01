@@ -1,0 +1,48 @@
+{
+  "app_version": "0.0.1",
+  "mygo": "github.com/egoist/mygo v0.7.3",
+  "aligner": {
+    "version": "v0.2.2",
+    "source": "https://github.com/corvo007/cpp-ctc-aligner/releases/tag/v0.2.2"
+  },
+  "onnxruntime": "1.23.2",
+  "model": {
+    "name": "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12",
+    "source": "user-provided local SubtitleAgent model"
+  },
+  "traditional_dictionary": "https://github.com/BYVoid/OpenCC/blob/ver.1.1.9/data/dictionary/TSCharacters.txt",
+  "files": {
+    "darwin/Chinese_to_Pinyin.txt": {
+      "size": 241770,
+      "sha256": "c4fdab92bcd3c4cdc4be3c3b41d318d991d21e87ed19ce81ed1e931404daded2"
+    },
+    "darwin/cpp-ort-aligner": {
+      "size": 933296,
+      "sha256": "9d7ba6fe713f6402753d360b0d7d917af71e57c596aff09caf5bf7042150b256"
+    },
+    "darwin/libonnxruntime.dylib": {
+      "size": 74871472,
+      "sha256": "e34cff43ba337523774171c5d963dabd67b4a8217addfbac0e24a938efb2330e"
+    },
+    "model/model.int8.onnx": {
+      "size": 365352120,
+      "sha256": "e7c4e54ee4c4c47829cc6667d5d00ed8ea7bef1dcfeef0fce766f77752a2726c"
+    },
+    "model/tokens.txt": {
+      "size": 86423,
+      "sha256": "a7a044c52cb29cbe8b0dc1953e92cefd4ca16b0ed968177b6beab21f9a7d0b31"
+    },
+    "windows/Chinese_to_Pinyin.txt": {
+      "size": 268458,
+      "sha256": "87f8d3ecc611de26c2f8e6257201a44bc63c32b1cd9cee5a078eafcd55707c5a"
+    },
+    "windows/cpp-ort-aligner.exe": {
+      "size": 1696768,
+      "sha256": "cee4113057e8598bf67e3ddf274d919e5fe86a82d7fb78994d0a78fa1f38ce2a"
+    },
+    "windows/onnxruntime.dll": {
+      "size": 14186016,
+      "sha256": "dec964ab1ee36cc9b0ae247d13b376627992fc57dec0454354017ab8fd84f1ea"
+    }
+  }
+}

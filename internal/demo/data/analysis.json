@@ -1,0 +1,271 @@
+{
+  "characters": [
+    {
+      "cue": 1,
+      "text": "你",
+      "pinyin": "ni",
+      "start": 0.02,
+      "end": 0.04,
+      "score": 0.9596847891807556
+    },
+    {
+      "cue": 1,
+      "text": "好",
+      "pinyin": "hao",
+      "start": 0.22,
+      "end": 0.24,
+      "score": 0.9993719458580017
+    },
+    {
+      "cue": 2,
+      "text": "欢",
+      "pinyin": "huan",
+      "start": 0.76,
+      "end": 0.78,
+      "score": 0.999602198600769
+    },
+    {
+      "cue": 2,
+      "text": "迎",
+      "pinyin": "ying",
+      "start": 1,
+      "end": 1.02,
+      "score": 0.9996926784515381
+    },
+    {
+      "cue": 2,
+      "text": "使",
+      "pinyin": "shi",
+      "start": 1.22,
+      "end": 1.24,
+      "score": 0.9985206127166748
+    },
+    {
+      "cue": 2,
+      "text": "用",
+      "pinyin": "yong",
+      "start": 1.42,
+      "end": 1.44,
+      "score": 0.9999439716339111
+    },
+    {
+      "cue": 2,
+      "text": "口",
+      "pinyin": "kou",
+      "start": 1.62,
+      "end": 1.6400000000000001,
+      "score": 0.9937707781791687
+    },
+    {
+      "cue": 2,
+      "text": "型",
+      "pinyin": "xing",
+      "start": 1.84,
+      "end": 1.86,
+      "score": 0.940437912940979
+    },
+    {
+      "cue": 2,
+      "text": "工",
+      "pinyin": "gong",
+      "start": 2.08,
+      "end": 2.1,
+      "score": 0.9918322563171387
+    },
+    {
+      "cue": 2,
+      "text": "具",
+      "pinyin": "ju",
+      "start": 2.3,
+      "end": 2.32,
+      "score": 0.9965656399726868
+    },
+    {
+      "cue": 3,
+      "text": "我",
+      "pinyin": "wo",
+      "start": 2.8,
+      "end": 2.82,
+      "score": 0.9999149441719055
+    },
+    {
+      "cue": 3,
+      "text": "们",
+      "pinyin": "men",
+      "start": 2.94,
+      "end": 2.96,
+      "score": 0.9974110722541809
+    },
+    {
+      "cue": 3,
+      "text": "一",
+      "pinyin": "yi",
+      "start": 3.18,
+      "end": 3.2,
+      "score": 0.9991915225982666
+    },
+    {
+      "cue": 3,
+      "text": "起",
+      "pinyin": "qi",
+      "start": 3.38,
+      "end": 3.4,
+      "score": 0.9998225569725037
+    },
+    {
+      "cue": 3,
+      "text": "测",
+      "pinyin": "ce",
+      "start": 3.68,
+      "end": 3.7,
+      "score": 0.9959990382194519
+    },
+    {
+      "cue": 3,
+      "text": "试",
+      "pinyin": "shi",
+      "start": 3.9,
+      "end": 3.92,
+      "score": 0.9889134168624878
+    },
+    {
+      "cue": 3,
+      "text": "中",
+      "pinyin": "zhong",
+      "start": 4.1,
+      "end": 4.119999999999999,
+      "score": 0.9930821657180786
+    },
+    {
+      "cue": 3,
+      "text": "文",
+      "pinyin": "wen",
+      "start": 4.3,
+      "end": 4.319999999999999,
+      "score": 0.9909065961837769
+    },
+    {
+      "cue": 3,
+      "text": "语",
+      "pinyin": "yu",
+      "start": 4.5,
+      "end": 4.52,
+      "score": 0.9926454424858093
+    },
+    {
+      "cue": 3,
+      "text": "音",
+      "pinyin": "yin",
+      "start": 4.7,
+      "end": 5.22,
+      "score": 0.9965943694114685
+    }
+  ],
+  "timeline": [
+    {
+      "start": 0,
+      "end": 0.02,
+      "mouth": "closed"
+    },
+    {
+      "start": 0.02,
+      "end": 0.22,
+      "mouth": "i"
+    },
+    {
+      "start": 0.22,
+      "end": 0.51,
+      "mouth": "a"
+    },
+    {
+      "start": 0.51,
+      "end": 0.83,
+      "mouth": "closed"
+    },
+    {
+      "start": 0.83,
+      "end": 1,
+      "mouth": "a"
+    },
+    {
+      "start": 1,
+      "end": 1.42,
+      "mouth": "i"
+    },
+    {
+      "start": 1.42,
+      "end": 1.84,
+      "mouth": "o"
+    },
+    {
+      "start": 1.84,
+      "end": 2.08,
+      "mouth": "i"
+    },
+    {
+      "start": 2.08,
+      "end": 2.3,
+      "mouth": "o"
+    },
+    {
+      "start": 2.3,
+      "end": 2.56,
+      "mouth": "v"
+    },
+    {
+      "start": 2.56,
+      "end": 2.8,
+      "mouth": "closed"
+    },
+    {
+      "start": 2.8,
+      "end": 2.94,
+      "mouth": "o"
+    },
+    {
+      "start": 2.94,
+      "end": 3.18,
+      "mouth": "e"
+    },
+    {
+      "start": 3.18,
+      "end": 3.68,
+      "mouth": "i"
+    },
+    {
+      "start": 3.68,
+      "end": 3.9,
+      "mouth": "e"
+    },
+    {
+      "start": 3.9,
+      "end": 4.1,
+      "mouth": "i"
+    },
+    {
+      "start": 4.1,
+      "end": 4.3,
+      "mouth": "o"
+    },
+    {
+      "start": 4.3,
+      "end": 4.5,
+      "mouth": "e"
+    },
+    {
+      "start": 4.5,
+      "end": 4.7,
+      "mouth": "v"
+    },
+    {
+      "start": 4.7,
+      "end": 5.02,
+      "mouth": "i"
+    },
+    {
+      "start": 5.02,
+      "end": 5.220875,
+      "mouth": "closed"
+    }
+  ]
+}

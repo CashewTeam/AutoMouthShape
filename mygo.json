@@ -1,0 +1,11 @@
+{
+  "name": "AutoMouthShape",
+  "identifier": "dev.automouthshape.desktop",
+  "version": "0.0.1",
+  "out": "build",
+  "resources": [
+    "third_party",
+    "README.md",
+    "VALIDATION.md"
+  ]
+}

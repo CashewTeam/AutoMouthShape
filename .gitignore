@@ -1,0 +1,7 @@
+/build/
+/.mygo/
+/.cache/
+/resources/runtime/*
+!/resources/runtime/.gitkeep
+*.amsproj
+.DS_Store
