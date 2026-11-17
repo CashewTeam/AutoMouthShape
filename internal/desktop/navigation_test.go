@@ -152,3 +152,23 @@ func TestTimelineWheelPinchAndKeyboard(t *testing.T) {
 		t.Fatal("zoom to fit", a.Zoom, a.Pan)
 	}
 }
+
+func TestTimelineTickDensity(t *testing.T) {
+	for _, tc := range []struct{ span, width, end float64 }{{332, 1300, 332}, {332, 600, 332}, {30, 1200, 30}, {2, 1200, 32}, {.1, 600, 10000}} {
+		step := timelineTickStep(tc.span, tc.width, tc.end)
+		pixels := step / tc.span * tc.width
+		labelWidth := float64(len(timelineTickLabel(tc.end, step))) * 7
+		if pixels < labelWidth+8 {
+			t.Fatalf("overlapping labels: %+v step %v gap %v label %v", tc, step, pixels, labelWidth)
+		}
+		if step <= 0 || math.IsNaN(step) {
+			t.Fatalf("invalid interval %v", step)
+		}
+	}
+	if timelineTickStep(332, 600, 332) <= timelineTickStep(332, 1300, 332) {
+		t.Fatal("narrower timeline did not reduce density")
+	}
+	if timelineTickStep(2, 1200, 2) >= timelineTickStep(30, 1200, 30) {
+		t.Fatal("zooming did not increase density")
+	}
+}

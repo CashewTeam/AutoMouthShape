@@ -32,7 +32,7 @@ func LoadDemo() (*core.Document, *core.PCM, error) {
 		}
 		d.Mouths[m] = core.Asset{Name: string(m) + ".png", Data: b}
 	}
-	if _, _, e = core.ValidateMouths(d.Mouths); e != nil {
+	if e = core.ValidateMouthImages(d.Mouths); e != nil {
 		return nil, nil, e
 	}
 	pcm, e := core.Decode(d.Audio.Data)

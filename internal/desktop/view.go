@@ -32,7 +32,9 @@ func (a *App) View(c *ui.Context) {
 			a.Player.Pause()
 			a.seek(core.Snap(a.Position, a.Doc.FPS) + 1/float64(a.Doc.FPS))
 		}
-		if c.Shortcut(ui.Cmd, ui.KeyS) {
+		if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyS) {
+			a.saveTo("", nil)
+		} else if c.Shortcut(ui.Cmd, ui.KeyS) {
 			a.saveTo(a.ProjectPath, nil)
 		}
 		if c.Shortcut(ui.Cmd, ui.KeyZ) {
@@ -95,7 +97,7 @@ func (a *App) View(c *ui.Context) {
 					if a.Player.Playing() {
 						play = "暂停"
 					}
-					if ui.PrimaryButton(c.Key("play"), play).Width(88).Shrink(0).Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
+					if ui.PrimaryButton(c.Key("play"), play).Width(88).Shrink(0).Disabled(a.Busy).Clicked() {
 						a.toggle()
 					}
 					if ui.Button(c.Key("next"), "后一音").Width(76).Shrink(0).Disabled(a.Busy || !hasNext).Clicked() {
@@ -173,6 +175,9 @@ func (a *App) header(c *ui.Context) {
 			if ui.Button(c.Key("save"), "保存工程").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
 				a.saveTo(a.ProjectPath, nil)
 			}
+			if ui.Button(c.Key("save-as"), "另存为").FontSize(12).Padding(8, 10).Disabled(a.Busy).Clicked() {
+				a.saveTo("", nil)
+			}
 			if ui.PrimaryButton(c.Key("export"), "导出 PNG 序列").FontSize(12).Padding(8, 12).Disabled(a.Busy || len(a.Doc.Timeline) == 0).Clicked() {
 				a.export()
 			}
@@ -193,7 +198,7 @@ func (a *App) sidebar(c *ui.Context) {
 			ui.Text(c, fmt.Sprintf("%d 条字幕 · %d 个已对齐汉字", len(a.Doc.Cues), len(a.Doc.Characters))).FontSize(10).TextColor(t.TextMuted)
 			ui.Box(c).FillWidth().Height(1).Background(t.Border)
 			ui.Text(c, "口型素材").FontSize(12).Bold()
-			ui.Text(c, "点击右侧按钮指定 PNG").FontSize(10).TextColor(t.TextMuted)
+			ui.Text(c, "点击右侧按钮指定 PNG 或 JPG").FontSize(10).TextColor(t.TextMuted)
 			for _, m := range core.Mouths {
 				ui.Row(c.Key("asset-" + string(m))).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
 					ui.Box(c).Size(46, 38).Radius(5).Background(ui.RGB(238, 239, 242)).Draw(func(p *ui.Painter, r ui.Rect) {
@@ -209,7 +214,7 @@ func (a *App) sidebar(c *ui.Context) {
 				})
 			}
 			ui.Box(c).Height(6)
-			ui.Text(c, "七张 PNG 使用相同画布尺寸与口型位置，可避免切换时跳动。").FontSize(10).TextColor(t.TextMuted).Wrap()
+			ui.Text(c, "支持不同尺寸的口型图片，导出保留各张图片原始尺寸。").FontSize(10).TextColor(t.TextMuted).Wrap()
 		})
 	})
 }
@@ -435,20 +440,33 @@ func (a *App) timelineInput(c *ui.Context, e ui.InputEvent) bool {
 	}
 	return false
 }
+
+// Use a readable pixel gap and round 1/2/5 intervals at every zoom level.
+func timelineTickStep(span, width, end float64) float64 {
+	gap := math.Max(72, float64(len(fmt.Sprintf("%.2fs", end)))*7+16)
+	target := span * gap / math.Max(1, width)
+	power := math.Pow(10, math.Floor(math.Log10(target)))
+	for _, multiplier := range []float64{1, 2, 5, 10} {
+		step := multiplier * power
+		if step >= target {
+			return step
+		}
+	}
+	return 10 * power
+}
+func timelineTickLabel(sec, step float64) string {
+	precision := max(0, int(-math.Floor(math.Log10(step))))
+	return strconv.FormatFloat(sec, 'f', precision, 64) + "s"
+}
 func (a *App) drawTimeline(p *ui.Painter, r ui.Rect, t *ui.Theme) {
 	p.Fill(r, t.Background, 0)
 	span := a.span()
 	x := func(s float64) float32 { return r.X + float32((s-a.Pan)/span)*r.W }
-	step := 1.0
-	if span > 20 {
-		step = 5
-	} else if span < 3 {
-		step = .25
-	}
+	step := timelineTickStep(span, float64(r.W), a.Pan+span)
 	for sec := math.Ceil(a.Pan/step) * step; sec <= a.Pan+span; sec += step {
 		px := x(sec)
 		p.Line(px, r.Y+22, px, r.Y+r.H, 1, t.Border)
-		p.Text(px+4, r.Y+4, fmt.Sprintf("%.2fs", sec), 10, t.TextMuted)
+		p.Text(px+4, r.Y+4, timelineTickLabel(sec, step), 10, t.TextMuted)
 	}
 	p.Fill(ui.Rect{X: r.X, Y: r.Y + 31, W: r.W, H: 48}, t.Surface, 4)
 	for px := float32(0); px < r.W; px += 2 {

@@ -1,8 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image/png"
 	"math"
 	"os"
 	"path/filepath"
@@ -19,8 +21,25 @@ func Export(ctx context.Context, parent string, d *Document, progress func(int, 
 	if err = ValidateTimeline(d.Timeline, d.Duration); err != nil {
 		return "", err
 	}
-	if _, _, err = ValidateMouths(d.Mouths); err != nil {
+	if err = ValidateMouthImages(d.Mouths); err != nil {
 		return "", err
+	}
+	encoded := make(map[Mouth][]byte, len(Mouths))
+	for _, mouth := range Mouths {
+		asset := d.Mouths[mouth]
+		img, format, e := DecodeMouth(asset.Data)
+		if e != nil {
+			return "", e
+		}
+		if format == "png" {
+			encoded[mouth] = asset.Data
+			continue
+		}
+		var buf bytes.Buffer
+		if e = png.Encode(&buf, img); e != nil {
+			return "", e
+		}
+		encoded[mouth] = buf.Bytes()
 	}
 	dir, err = os.MkdirTemp(parent, "AutoMouthShape_"+time.Now().Format("20060102_150405")+"_")
 	if err != nil {
@@ -37,7 +56,7 @@ func Export(ctx context.Context, parent string, d *Document, progress func(int, 
 		}
 		m := MouthAt(d.Timeline, float64(n)/float64(d.FPS))
 		path := filepath.Join(dir, fmt.Sprintf("frame_%06d.png", n+1))
-		if err = os.WriteFile(path, d.Mouths[m].Data, 0644); err != nil {
+		if err = os.WriteFile(path, encoded[m], 0644); err != nil {
 			return dir, err
 		}
 		if progress != nil && (n%30 == 0 || n+1 == count) {

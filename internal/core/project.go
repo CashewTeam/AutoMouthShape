@@ -25,7 +25,7 @@ type manifest struct {
 }
 
 func SaveProject(path string, d *Document) error {
-	if _, _, e := ValidateMouths(d.Mouths); e != nil {
+	if e := ValidateMouthImages(d.Mouths); e != nil {
 		return e
 	}
 	if e := ValidateTimeline(d.Timeline, d.Duration); e != nil {
@@ -51,7 +51,12 @@ func SaveProject(path string, d *Document) error {
 	}
 	m := manifest{Format: 1, AppVersion: Version, Name: d.Name, Audio: "audio" + filepath.Ext(d.Audio.Name), Subtitle: "subtitles.srt", Mouths: map[Mouth]string{}, Cues: d.Cues, Characters: d.Characters, Timeline: d.Timeline, Duration: d.Duration, FPS: d.FPS, SilenceDB: d.SilenceDB}
 	for _, mouth := range Mouths {
-		m.Mouths[mouth] = "mouths/" + string(mouth) + ".png"
+		_, format, _ := DecodeMouth(d.Mouths[mouth].Data)
+		ext := ".png"
+		if format == "jpeg" {
+			ext = ".jpg"
+		}
+		m.Mouths[mouth] = "mouths/" + string(mouth) + ext
 		if e = add(m.Mouths[mouth], d.Mouths[mouth].Data); e != nil {
 			z.Close()
 			f.Close()
@@ -155,9 +160,9 @@ func OpenProject(path string) (*Document, *PCM, error) {
 		if e != nil {
 			return nil, nil, e
 		}
-		d.Mouths[mouth] = Asset{Name: string(mouth) + ".png", Data: data}
+		d.Mouths[mouth] = Asset{Name: filepath.Base(m.Mouths[mouth]), Data: data}
 	}
-	if _, _, e = ValidateMouths(d.Mouths); e != nil {
+	if e = ValidateMouthImages(d.Mouths); e != nil {
 		return nil, nil, e
 	}
 	if e = ValidateTimeline(d.Timeline, d.Duration); e != nil {

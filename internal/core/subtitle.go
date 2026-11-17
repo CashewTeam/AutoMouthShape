@@ -68,8 +68,14 @@ func ParseSRT(data []byte) ([]Cue, error) {
 			i++
 		}
 		value := strings.Join(content, " ")
-		if end <= start || value == "" {
+		if end <= start {
 			return nil, fmt.Errorf("字幕 %d 内容或时间范围无效", idx)
+		}
+		if value == "" {
+			continue
+		}
+		if strings.Contains(value, "-->") {
+			return nil, fmt.Errorf("字幕 %d 正文包含时间码；请检查字幕是否被重复包装为 SRT", idx)
 		}
 		if len(out) > 0 && start < out[len(out)-1].End {
 			return nil, fmt.Errorf("字幕 %d 与上一条重叠", idx)

@@ -6,6 +6,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"image"
+	"image/jpeg"
 	"math"
 	"os"
 	"path/filepath"
@@ -156,7 +159,7 @@ func TestPortableProjectAndExport(t *testing.T) {
 func TestInvalidAssetsAndPCM(t *testing.T) {
 	d, p := loadDemo(t)
 	delete(d.Mouths, core.V)
-	if _, _, e := core.ValidateMouths(d.Mouths); e == nil {
+	if e := core.ValidateMouthImages(d.Mouths); e == nil {
 		t.Fatal("missing mouth accepted")
 	}
 	decoded, e := core.Decode(p.WAV(0, p.Duration()))
@@ -189,5 +192,162 @@ func TestMP3Decode(t *testing.T) {
 	}
 	if peak < .05 {
 		t.Fatal("MP3 decoded to silence")
+	}
+}
+
+func TestJPEGMouthsFolderProjectAndExport(t *testing.T) {
+	d, _ := loadDemo(t)
+	dir := t.TempDir()
+	for i, m := range core.Mouths {
+		asset := d.Mouths[m]
+		name := string(m) + ".png"
+		if i%2 == 0 {
+			img, _, err := image.Decode(bytes.NewReader(asset.Data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var buf bytes.Buffer
+			if err := jpeg.Encode(&buf, img, nil); err != nil {
+				t.Fatal(err)
+			}
+			asset.Data = buf.Bytes()
+			name = string(m) + ".JpEg"
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), asset.Data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mouths, err := core.LoadMouthFolder(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Mouths = mouths
+	path := filepath.Join(dir, "mixed.amsproj")
+	if err := core.SaveProject(path, d); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := core.OpenProject(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range core.Mouths {
+		if !bytes.Equal(d.Mouths[m].Data, loaded.Mouths[m].Data) {
+			t.Fatalf("mouth %s changed", m)
+		}
+	}
+	loaded.Timeline = []core.Segment{{Start: 0, End: loaded.Duration, Mouth: core.A}}
+	out, err := core.Export(context.Background(), dir, loaded, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, "frame_000001.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil || format != "png" {
+		t.Fatalf("export format %q: %v", format, err)
+	}
+	want, _, err := image.Decode(bytes.NewReader(loaded.Mouths[core.A].Data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Bounds() != want.Bounds() {
+		t.Fatal("export dimensions changed")
+	}
+	for y := 0; y < got.Bounds().Dy(); y++ {
+		for x := 0; x < got.Bounds().Dx(); x++ {
+			if got.At(x, y) != want.At(x, y) {
+				r1, g1, b1, a1 := got.At(x, y).RGBA()
+				r2, g2, b2, a2 := want.At(x, y).RGBA()
+				if r1 != r2 || g1 != g2 || b1 != b2 || a1 != a2 {
+					t.Fatalf("pixel changed at %d,%d", x, y)
+				}
+			}
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.jpg"), loaded.Mouths[core.A].Data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.LoadMouthFolder(dir); err == nil {
+		t.Fatal("duplicate formats accepted")
+	}
+}
+
+func TestSRTEmptyCues(t *testing.T) {
+	input := "1\r\n00:00:00,000 --> 00:00:00,500\r\n\r\n2\r\n00:00:00,500 --> 00:00:01,000\r\n你好\r\n\r\n3\r\n00:00:01,000 --> 00:00:02,000\r\n   \r\n\r\n4\r\n00:00:02,000 --> 00:00:03,000\r\n世界\r\n\r\n5\r\n00:00:03,000 --> 00:00:04,000\r\n"
+	cues, err := core.ParseSRT([]byte(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cues) != 2 || cues[0].Index != 2 || cues[0].Text != "你好" || cues[1].Index != 4 || cues[1].Start != 2 {
+		t.Fatalf("unexpected cues: %+v", cues)
+	}
+	for _, input := range []string{
+		"1\n00:00:00,000 --> 00:00:01,000\n",
+		"1\n00:00:01,000 --> 00:00:00,000\n",
+		"1\n00:00:00,000 --> 00:00:01,000\n00:00:00,000 --> 00:00:00,500\n",
+	} {
+		if _, err := core.ParseSRT([]byte(input)); err == nil {
+			t.Fatalf("accepted invalid subtitles %q", input)
+		}
+	}
+}
+
+func TestDifferentMouthCanvases(t *testing.T) {
+	d, _ := loadDemo(t)
+	var b bytes.Buffer
+	if err := jpeg.Encode(&b, image.NewRGBA(image.Rect(0, 0, 96, 64)), nil); err != nil {
+		t.Fatal(err)
+	}
+	d.Mouths[core.A] = core.Asset{Name: "new.jpg", Data: b.Bytes()}
+	path := filepath.Join(t.TempDir(), "unfinished.amsproj")
+	if err := core.SaveProject(path, d); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := core.OpenProject(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(loaded.Mouths[core.A].Data, b.Bytes()) {
+		t.Fatal("asset changed")
+	}
+	folder := t.TempDir()
+	for _, m := range core.Mouths {
+		if err := os.WriteFile(filepath.Join(folder, loaded.Mouths[m].Name), loaded.Mouths[m].Data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := core.LoadMouthFolder(folder); err != nil {
+		t.Fatal(err)
+	}
+	loaded.Timeline = []core.Segment{{Start: 0, End: loaded.Duration / 2, Mouth: core.A}, {Start: loaded.Duration / 2, End: loaded.Duration, Mouth: core.O}}
+	out, err := core.Export(context.Background(), t.TempDir(), loaded, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, frame := range []struct {
+		name          string
+		width, height int
+	}{{"frame_000001.png", 96, 64}, {fmt.Sprintf("frame_%06d.png", int(math.Ceil(loaded.Duration*float64(loaded.FPS)))), 512, 512}} {
+		data, err := os.ReadFile(filepath.Join(out, frame.name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if img.Bounds().Dx() != frame.width || img.Bounds().Dy() != frame.height {
+			t.Fatalf("%s dimensions changed: %v", frame.name, img.Bounds())
+		}
+	}
+	loaded.FPS = 24
+	if err := core.SaveProject(path, loaded); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err = core.OpenProject(path)
+	if err != nil || loaded.FPS != 24 {
+		t.Fatalf("overwrite failed: %v", err)
 	}
 }

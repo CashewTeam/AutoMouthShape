@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/audio"
 	_ "github.com/egoist/mygo/audio/mp3"
-	"image/png"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"math"
 	"os"
@@ -95,25 +97,29 @@ func (p *PCM) WAV(start, end float64) []byte {
 	}
 	return out.Bytes()
 }
-func ValidateMouths(assets map[Mouth]Asset) (int, int, error) {
-	w, h := 0, 0
+func DecodeMouth(data []byte) (image.Image, string, error) {
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, "", err
+	}
+	if format != "png" && format != "jpeg" {
+		return nil, "", fmt.Errorf("口型图片仅支持 PNG 和 JPG/JPEG")
+	}
+	return img, format, nil
+}
+
+// ValidateMouthImages checks that all seven assets are supported images.
+func ValidateMouthImages(assets map[Mouth]Asset) error {
 	for _, m := range Mouths {
 		a, ok := assets[m]
 		if !ok || len(a.Data) == 0 {
-			return 0, 0, fmt.Errorf("缺少 %s 口型 PNG", m.Label())
+			return fmt.Errorf("缺少 %s 口型图片", m.Label())
 		}
-		img, e := png.Decode(bytes.NewReader(a.Data))
-		if e != nil {
-			return 0, 0, fmt.Errorf("%s: %w", a.Name, e)
-		}
-		r := img.Bounds()
-		if w == 0 {
-			w, h = r.Dx(), r.Dy()
-		} else if r.Dx() != w || r.Dy() != h {
-			return 0, 0, fmt.Errorf("七张 PNG 的画布尺寸须一致 (%s)", a.Name)
+		if _, _, err := DecodeMouth(a.Data); err != nil {
+			return fmt.Errorf("%s: %w", a.Name, err)
 		}
 	}
-	return w, h, nil
+	return nil
 }
 func LoadMouthFolder(dir string) (map[Mouth]Asset, error) {
 	entries, e := os.ReadDir(dir)
@@ -127,7 +133,7 @@ func LoadMouthFolder(dir string) (map[Mouth]Asset, error) {
 		}
 		name := strings.ToLower(entry.Name())
 		for _, m := range Mouths {
-			if name == string(m)+".png" {
+			if name == string(m)+".png" || name == string(m)+".jpg" || name == string(m)+".jpeg" {
 				if _, ok := out[m]; ok {
 					return nil, fmt.Errorf("%s 有重复文件", m.Label())
 				}
@@ -139,7 +145,7 @@ func LoadMouthFolder(dir string) (map[Mouth]Asset, error) {
 			}
 		}
 	}
-	_, _, e = ValidateMouths(out)
+	e = ValidateMouthImages(out)
 	return out, e
 }
 func Silence(p *PCM, db float64) [][2]float64 {

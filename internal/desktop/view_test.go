@@ -2,7 +2,12 @@ package desktop
 
 import (
 	"automouthshape/internal/core"
+	"bytes"
 	"github.com/egoist/mygo/ui"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/jpeg"
 	"path/filepath"
 	"testing"
 )
@@ -92,5 +97,68 @@ func TestTimelineEditingUI(t *testing.T) {
 	}
 	if !tt.HasText("区间编辑") {
 		t.Fatal("inspector missing")
+	}
+}
+
+func TestAssignMouthUpdatesPreviewsWithDifferentCanvas(t *testing.T) {
+	root, err := filepath.Abs("../../resources/runtime")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Player.Close()
+	a.Doc.Timeline = []core.Segment{{Start: 0, End: a.Doc.Duration, Mouth: core.A}}
+	tt := ui.NewTester(a.View, 1440, 940)
+	before := tt.Image()
+	img := image.NewRGBA(image.Rect(0, 0, 96, 64))
+	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{R: 255, A: 255}}, image.Point{}, draw.Src)
+	var data bytes.Buffer
+	if err := jpeg.Encode(&data, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	asset := core.Asset{Name: "custom.jpg", Data: data.Bytes()}
+	if err := a.assignMouth(core.A, asset); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	after := tt.Image()
+	// Both the sidebar thumbnail and main preview must paint the new red image.
+	for _, region := range []image.Rectangle{image.Rect(0, 0, 228, 700), image.Rect(250, 150, 1150, 600)} {
+		changed := false
+		for y := region.Min.Y; y < region.Max.Y; y++ {
+			for x := region.Min.X; x < region.Max.X; x++ {
+				r, g, b, _ := after.At(x, y).RGBA()
+				if r > 50000 && g < 10000 && b < 10000 && before.At(x, y) != after.At(x, y) {
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			t.Fatalf("preview did not update in %v", region)
+		}
+	}
+	old := a.Images[core.A]
+	if err := a.assignMouth(core.A, core.Asset{Name: "bad.jpg", Data: []byte("invalid")}); err == nil {
+		t.Fatal("invalid image accepted")
+	}
+	if a.Images[core.A] != old || a.Doc.Mouths[core.A].Name != asset.Name {
+		t.Fatal("failed import changed asset")
+	}
+}
+
+func TestSavedProjectState(t *testing.T) {
+	a := &App{Doc: core.NewDocument(), Dirty: true, Edited: true, LastError: "old failure"}
+	path := filepath.Join(t.TempDir(), "我的工程.amsproj")
+	a.savedProject(path)
+	if a.Doc.Name != "我的工程" || a.ProjectPath != path || a.Dirty || a.Edited || a.LastError != "" {
+		t.Fatalf("incorrect saved state: %+v", a)
+	}
+	a.Dirty = true
+	a.savedProject(path)
+	if a.ProjectPath != path || a.Dirty {
+		t.Fatal("save lost current project")
 	}
 }

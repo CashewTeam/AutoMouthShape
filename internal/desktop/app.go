@@ -81,9 +81,9 @@ func (a *App) install(d *core.Document, p *core.PCM) {
 	a.Player = audio.NewSound(core.SampleRate, 1, p.Samples).NewPlayer()
 	a.Images = map[core.Mouth]*ui.Bitmap{}
 	for _, m := range core.Mouths {
-		im, e := ui.DecodeBitmap(d.Mouths[m].Data)
+		img, _, e := core.DecodeMouth(d.Mouths[m].Data)
 		if e == nil {
-			a.Images[m] = im
+			a.Images[m] = ui.NewBitmap(img)
 		}
 	}
 	a.History = core.History{}
@@ -160,10 +160,6 @@ func (a *App) toggle() {
 	if a.Player.Playing() {
 		a.Player.Pause()
 	} else {
-		if len(a.Doc.Timeline) == 0 {
-			a.Status = "请先完成分析"
-			return
-		}
 		if a.Loop && a.Selected >= 0 && a.Selected < len(a.Doc.Timeline) {
 			v := a.Doc.Timeline[a.Selected]
 			a.Player.SetLoopRange(time.Duration(v.Start*1e9), time.Duration(v.End*1e9))
@@ -250,6 +246,9 @@ func (a *App) choose(title string, ext []string, dir bool, apply func(string)) {
 	}()
 }
 func (a *App) saveTo(path string, done func()) {
+	if a.Busy {
+		return
+	}
 	a.Busy = true
 	a.Player.Pause()
 	d := a.Doc
@@ -262,7 +261,9 @@ func (a *App) saveTo(path string, done func()) {
 			if !strings.EqualFold(filepath.Ext(path), ".amsproj") {
 				path += ".amsproj"
 			}
-			e = core.SaveProject(path, d)
+			saved := *d
+			saved.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			e = core.SaveProject(path, &saved)
 		}
 		a.update(func() {
 			a.Busy = false
@@ -273,15 +274,20 @@ func (a *App) saveTo(path string, done func()) {
 			if path == "" {
 				return
 			}
-			a.Dirty = false
-			a.Edited = false
-			a.ProjectPath = path
-			a.Status = "工程已保存 · " + filepath.Base(path)
+			a.savedProject(path)
 			if done != nil {
 				done()
 			}
 		})
 	}()
+}
+func (a *App) savedProject(path string) {
+	a.Doc.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	a.ProjectPath = path
+	a.Dirty = false
+	a.Edited = false
+	a.LastError = ""
+	a.Status = "工程已保存 · " + filepath.Base(path)
 }
 func (a *App) guard(action func()) {
 	if !a.Dirty {
@@ -384,7 +390,7 @@ func (a *App) invalidate() {
 	a.Edited = false
 }
 func (a *App) importMouths() {
-	a.choose("选择七张口型 PNG 所在文件夹", nil, true, func(path string) {
+	a.choose("选择七张口型图片所在文件夹", nil, true, func(path string) {
 		m, e := core.LoadMouthFolder(path)
 		if e != nil {
 			a.fail(e)
@@ -397,31 +403,34 @@ func (a *App) importMouths() {
 	})
 }
 func (a *App) importMouth(m core.Mouth) {
-	a.choose("指定 "+m.Label()+" 口型 PNG", []string{"png"}, false, func(path string) {
+	a.choose("指定 "+m.Label()+" 口型图片", []string{"png", "jpg", "jpeg"}, false, func(path string) {
 		b, e := os.ReadFile(path)
 		if e != nil {
 			a.fail(e)
 			return
 		}
-		next := make(map[core.Mouth]core.Asset)
-		for k, v := range a.Doc.Mouths {
-			next[k] = v
-		}
-		next[m] = core.Asset{Name: filepath.Base(path), Data: b}
-		if _, _, e = core.ValidateMouths(next); e != nil {
+		if e := a.assignMouth(m, core.Asset{Name: filepath.Base(path), Data: b}); e != nil {
 			a.fail(e)
-			return
 		}
-		a.Doc.Mouths = next
-		a.reloadImages()
-		a.Dirty = true
 	})
 }
+func (a *App) assignMouth(m core.Mouth, asset core.Asset) error {
+	img, _, err := core.DecodeMouth(asset.Data)
+	if err != nil {
+		return fmt.Errorf("%s: %w", asset.Name, err)
+	}
+	a.Doc.Mouths[m] = asset
+	a.Images[m] = ui.NewBitmap(img)
+	a.Dirty = true
+	a.Status = m.Label() + " 口型已替换 · " + asset.Name
+	return nil
+}
+
 func (a *App) reloadImages() {
 	for _, m := range core.Mouths {
-		im, e := ui.DecodeBitmap(a.Doc.Mouths[m].Data)
+		img, _, e := core.DecodeMouth(a.Doc.Mouths[m].Data)
 		if e == nil {
-			a.Images[m] = im
+			a.Images[m] = ui.NewBitmap(img)
 		}
 	}
 }
