@@ -24,6 +24,15 @@ with tempfile.TemporaryDirectory(prefix='.package-', dir=build) as temporary:
     subprocess.run(['ditto',str(win),str(package)],check=True)
     app = package/'AutoMouthShape.app'
     subprocess.run(['ditto',str(mac),str(app)],check=True)
+    # Remove Finder artifacts from the staging copy before signing the app.
+    for directory, dirs, files in os.walk(package):
+        for name in list(dirs):
+            if name == '__MACOSX':
+                shutil.rmtree(Path(directory)/name)
+                dirs.remove(name)
+        for name in files:
+            if name == '.DS_Store' or name.startswith('._'):
+                (Path(directory)/name).unlink()
     mac_base = app/'Contents/Resources'
     # Keep one model inside the self-contained macOS app.
     shutil.rmtree(package/'runtime/model')
@@ -42,6 +51,6 @@ with tempfile.TemporaryDirectory(prefix='.package-', dir=build) as temporary:
     subprocess.run(['codesign','--force','--sign','-','--preserve-metadata=identifier,entitlements,flags',str(app)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
     archive = Path(temporary)/output.name
-    subprocess.run(['ditto','-c','-k','--zlibCompressionLevel','9','--keepParent',str(package),str(archive)],check=True)
+    subprocess.run(['ditto','-c','-k','--norsrc','--zlibCompressionLevel','9','--keepParent',str(package),str(archive)],check=True)
     os.replace(archive, output)
 print(f'Created combined offline ZIP: {output}')
