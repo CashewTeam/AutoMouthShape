@@ -162,3 +162,22 @@ func TestSavedProjectState(t *testing.T) {
 		t.Fatal("save lost current project")
 	}
 }
+
+func TestProjectFileExtension(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{"工程", "工程.amsproj"},
+		{"工程.amsproj", "工程.amsproj"},
+		{"工程.AMSPROJ", "工程.AMSPROJ"},
+		{"工程.amsproj.amsproj", "工程.amsproj.amsproj"},
+		{"工程.v2", "工程.v2.amsproj"},
+	} {
+		path := filepath.Join(t.TempDir(), tc.input)
+		want := filepath.Join(filepath.Dir(path), tc.want)
+		if got := projectFilePath(path); got != want {
+			t.Fatalf("%s: got %s want %s", path, got, want)
+		}
+		if got := projectFilePath(want); got != want {
+			t.Fatalf("filename changed on repeat: %s", got)
+		}
+	}
+}

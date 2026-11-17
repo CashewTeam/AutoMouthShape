@@ -1,4 +1,4 @@
-# AutoMouthShape 0.0.12
+# AutoMouthShape 0.0.13
 
 使用 MyGo native UI 的中文口型工作台。纯 Go 界面，不使用 HTML、JavaScript 或 WebView。音频、字幕、口型分析和工程内容均在本地处理，运行时不联网。
 

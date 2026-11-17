@@ -245,6 +245,19 @@ func (a *App) choose(title string, ext []string, dir bool, apply func(string)) {
 		})
 	}()
 }
+func projectName(path string) string {
+	name := filepath.Base(path)
+	if strings.EqualFold(filepath.Ext(name), ".amsproj") {
+		name = name[:len(name)-len(".amsproj")]
+	}
+	return name
+}
+func projectFilePath(path string) string {
+	if !strings.EqualFold(filepath.Ext(path), ".amsproj") {
+		return path + ".amsproj"
+	}
+	return path
+}
 func (a *App) saveTo(path string, done func()) {
 	if a.Busy {
 		return
@@ -255,14 +268,14 @@ func (a *App) saveTo(path string, done func()) {
 	go func() {
 		var e error
 		if path == "" {
-			path, e = mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: a.Window, Title: "保存便携工程", DefaultPath: d.Name + ".amsproj", Filters: []mygo.FileFilter{{Name: "AutoMouthShape 工程", Extensions: []string{"amsproj"}}}})
+			path, e = mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: a.Window, Title: "保存便携工程", DefaultPath: projectName(d.Name), Filters: []mygo.FileFilter{{Name: "AutoMouthShape 工程", Extensions: []string{"amsproj"}}}})
+			if path != "" {
+				path = projectFilePath(path)
+			}
 		}
 		if e == nil && path != "" {
-			if !strings.EqualFold(filepath.Ext(path), ".amsproj") {
-				path += ".amsproj"
-			}
 			saved := *d
-			saved.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			saved.Name = projectName(path)
 			e = core.SaveProject(path, &saved)
 		}
 		a.update(func() {
@@ -282,7 +295,7 @@ func (a *App) saveTo(path string, done func()) {
 	}()
 }
 func (a *App) savedProject(path string) {
-	a.Doc.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	a.Doc.Name = projectName(path)
 	a.ProjectPath = path
 	a.Dirty = false
 	a.Edited = false
